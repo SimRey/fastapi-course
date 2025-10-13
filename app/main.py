@@ -12,7 +12,7 @@ app = FastAPI()
 
 @app.get("/")
 async def read_root():
-    return {"Hello": "World"}
+    return {"message": "Hello World from FastAPI!"}
 
 origins = ["*"]
 
