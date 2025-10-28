@@ -1,0 +1,7 @@
+video.txt
+.vscode/
+.pytest_cache/
+.git
+.github/
+tests/
+
