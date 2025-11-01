@@ -7,21 +7,21 @@ jobs:
     environment:
       name: testing
     env:
-      DATABASE_HOSTNAME: ${{ secrets.DATABASE_HOSTNAME }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      ALGORITHM: ${{ secrets.ALGORITHM }}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+      DATABASE_HOSTNAME: ${{secrets.DATABASE_HOSTNAME}}
+      DATABASE_PORT: ${{secrets.DATABASE_PORT}}
+      DATABASE_PASSWORD: ${{secrets.DATABASE_PASSWORD}}
+      DATABASE_NAME: ${{secrets.DATABASE_NAME}}
+      DATABASE_USERNAME: ${{secrets.DATABASE_USERNAME}}
+      SECRET_KEY: ${{secrets.SECRET_KEY}}
+      ALGORITHM: ${{secrets.ALGORITHM}}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{secrets.ACCESS_TOKEN_EXPIRE_MINUTES}}
 
     services:
       postgres:
         image: postgres
         env:
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+          POSTGRES_PASSWORD: ${{secrets.DATABASE_PASSWORD}}
+          POSTGRES_DB: ${{secrets.DATABASE_NAME}}_test
         ports:
           - 5432:5432
         options: >-
@@ -30,40 +30,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    runs-on: ubuntu-latest
-    steps:
-      - name: Pull repository
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.12"
-
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Wait for Postgres
-        run: |
-          until pg_isready -h localhost -p 5432; do
-            echo "Waiting for Postgres..."
-            sleep 1
-          done
-
-      - name: Create test database
-        env:
-          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        run: |
-          psql -h localhost -U ${{ secrets.DATABASE_USERNAME }} -c "CREATE DATABASE ${{ secrets.DATABASE_NAME }}_test;"
-
-      - name: Run tests with pytest
-        run: |
-          pip install pytest
-          pytest
-
+    
   # -----------------------------
   # 2. BUILD & PUSH DOCKER IMAGE
   # -----------------------------
@@ -76,21 +43,30 @@ jobs:
       packages: write
 
     steps:
+      # 1️⃣ Checkout the code again
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2️⃣ Set up QEMU
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        # QEMU allows Docker to build images for multiple CPU architectures (x86, ARM, etc.)
+        # Useful if your image needs to run on ARM devices (like Apple M1/M2)
 
+      # 3️⃣ Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        # Buildx allows advanced Docker build features, like multi-arch builds and build caching
 
+      # 4️⃣ Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+        # These credentials must exist in GitHub secrets
 
+      # 5️⃣ Build and push Docker image
       - name: Build and Push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -98,5 +74,6 @@ jobs:
           file: Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/serverless-py:latest
+          # Build cache to speed up future builds
           cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/serverless-py:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/serverless-py:buildcache,mode=max
