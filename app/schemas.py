@@ -50,6 +50,7 @@ class Post(PostBase):
         orm_mode = True  # To work with ORM objects directly
 
 class PostSimple(BaseModel):
+    id: int
     title: str
     content: str
     owner: UserOutSimple
