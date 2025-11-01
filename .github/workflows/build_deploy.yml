@@ -47,28 +47,49 @@ jobs:
           pip install pytest
           pytest
 
-      # - name: Login to Docker Hub
-      #   uses: docker/login-action@v1
-      #   with:
-      #     username: ${{ secrets.DOCKER_HUB_USERNAME }}
-      #     password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+  # -----------------------------
+  # 2. BUILD & PUSH DOCKER IMAGE
+  # -----------------------------
+  build_push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
 
-      # - name: Set up Docker Buildx
-      #   id: buildx
-      #   uses: docker/setup-buildx-action@v1
+    steps:
+      # 1️⃣ Checkout the code again
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # - name: Build and push
-      #   id: docker_build
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: ./
-      #     file: ./Dockerfile
-      #     builder: ${{ steps.buildx.outputs.name }}
-      #     push: true
-      #     tags: ${{ secrets.DOCKER_HUB_USERNAME }}/fastapi:latest
-      #     cache-from: type=local,src=/tmp/.buildx-cache
-      #     cache-to: type=local,dest=/tmp/.buildx-cache
-      # - name: Image digest
-      #   run: echo ${{ steps.docker_build.outputs.digest }}
+      # 2️⃣ Set up QEMU
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        # QEMU allows Docker to build images for multiple CPU architectures (x86, ARM, etc.)
+        # Useful if your image needs to run on ARM devices (like Apple M1/M2)
 
-  
+      # 3️⃣ Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        # Buildx allows advanced Docker build features, like multi-arch builds and build caching
+
+      # 4️⃣ Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+        # These credentials must exist in GitHub secrets
+
+      # 5️⃣ Build and push Docker image
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/serverless-py:latest
+          # Build cache to speed up future builds
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/serverless-py:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/serverless-py:buildcache,mode=max

@@ -109,7 +109,7 @@ async def delete_post(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Not authorized to perform requested action")
     
-    post.delete(synchronize_session=False)
+    post_query.delete(synchronize_session=False)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
